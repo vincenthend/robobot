@@ -179,7 +179,7 @@ task main()
 			waitUntil(!isSameColor(colorYellow));
 			ClearOutput();
 			displayTextLine(5, "DONE! Backtracking");
-			stopAllMotors
+			stopAllMotors();
 			wait(2000);
 			finish = true;
 		}

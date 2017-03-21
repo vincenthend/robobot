@@ -180,7 +180,7 @@ task main()
 			ClearOutput();
 			displayTextLine(5, "DONE! Backtracking");
 			stopAllMotors();
-			wait(2000);
+			wait(2);
 			finish = true;
 		}
 

@@ -27,7 +27,8 @@
 #define max_stack 100
 
 // Constants
-const int track_speed = 100;
+const int track_speed = 90;
+const int encode_range = 100;
 
 // Stack
 typedef struct{
@@ -89,34 +90,18 @@ task main()
 
 	// Start tracking
 	while(!finish){
+
 		///////////////////
 		// Line tracking //
 		///////////////////
 
 		block_found = lineTrack();
-
+		// Reset motor Encoder
+		resetMotorEncoder(leftMotor);
+		resetMotorEncoder(rightMotor);
 		//Found Green
 		if(block_found == 0){
-			//Safety timer (prevents
-			if (!found_green){
-				clearTimer(T1);
-			}
 
-			//Recently found a green zone
-			if(time1[T1] <= 1500 && found_green){
-				// EXCEPTION :
-				// Repeatedly found green zone, skip the section
-				clearTimer(T1);
-				setMotor(leftMotor,50);
-				setMotor(rightMotor,50);
-				waitUntil(!isSameColor(colorGreen));
-				found_green = false;
-				i = Pop(&S);
-			}
-
-			found_green = true;
-			//Green block found is a different green zone, continue
-			clearTimer(T1);
 			///////////////
 			// Start DFS //
 			///////////////
@@ -124,7 +109,7 @@ task main()
 			//Check branch
 			setMotor(leftMotor,50);
 			setMotor(rightMotor,50);
-			waitUntil(!isSameColor(colorGreen));
+			waitUntil(!isSameColor(colorGreen) && (getMotorEncoder(leftMotor)> encode_range));
 			stopAllMotors();
 			turnL(90);
 
@@ -155,7 +140,9 @@ task main()
 				Push(&S, i);
 				turnR(90);
 			}
-
+			// EXCEPTION : Found Green Zone again
+			clearTimer(T1);
+			found_green = true;
 		}
 
 		// Found Red
@@ -166,7 +153,7 @@ task main()
 			u_turn = true;
 			setMotor(leftMotor,50);
 			setMotor(rightMotor,50);
-			waitUntil(!isSameColor(colorRed));
+			waitUntil(!isSameColor(colorRed) && getMotorEncoder(leftMotor)>encode_range);
 			stopAllMotors();
 			turnL(180);
 		}
@@ -183,9 +170,7 @@ task main()
 			wait(2);
 			finish = true;
 		}
-
 		PrintOutput(S);
-		ClearOutput();
 	}
 
 	///////////////
@@ -202,9 +187,11 @@ task main()
 		// if encountered an intersection, do the
 		if (block_found == 0){
 			//Move a bit
+			resetMotorEncoder(leftMotor);
+			resetMotorEncoder(rightMotor);
 			setMotor(leftMotor,50);
 			setMotor(rightMotor,50);
-			waitUntil(!isSameColor(colorGreen));
+			waitUntil(!isSameColor(colorGreen) && getMotorEncoder(leftMotor) >= encode_range);
 
 			//Decide home movement
 			i = (Pop(&S) + 2) % 4;
@@ -216,8 +203,8 @@ task main()
 			}
 			PrintOutput(S);
 		}
-		ClearOutput();
 	}
+	ClearOutput();
 	displayTextLine(i, "Exit Reached");
 }
 
@@ -276,7 +263,6 @@ int lineTrack(){
 
 void turnR(int deg){
 	string sOutputString;
-
 	resetGyro(gyroSensor);
 	setMotor(leftMotor,50);
 	setMotor(rightMotor,-50);

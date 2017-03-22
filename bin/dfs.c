@@ -44,6 +44,7 @@ typedef struct{
 void CreateStack(Stack * S);
 void Push(Stack * S, int i);
 int Pop(Stack * S);
+bool IsEmpty(Stack S);
 
 // Color Check
 bool isSameColor(int color);
@@ -70,7 +71,7 @@ task main()
 	////////////////////
 	bool finish = false;
 	bool u_turn = false;
-	bool found_green = false;
+	bool branch_avail = true;
 	int block_found;
 	int i;
 	Stack S;
@@ -94,14 +95,17 @@ task main()
 		///////////////////
 		// Line tracking //
 		///////////////////
-
+		clearTimer(T1);
 		block_found = lineTrack();
+
 		// Reset motor Encoder
 		resetMotorEncoder(leftMotor);
 		resetMotorEncoder(rightMotor);
-		//Found Green
-		if(block_found == 0){
 
+
+		//Found Green
+		if(block_found == 0 && time1[T1] >=1000){
+			clearTimer(T1);
 			///////////////
 			// Start DFS //
 			///////////////
@@ -111,38 +115,67 @@ task main()
 			setMotor(rightMotor,50);
 			waitUntil(!isSameColor(colorGreen) && (getMotorEncoder(leftMotor)> encode_range));
 			stopAllMotors();
-			turnL(90);
 
-			// Check whether a red block has been encountered
-			// If so, add the last value to switch to another
-			// branch.
-			if(!u_turn){
-				i = 1;
-			}
-			else{
-				if(i <= 3){
-					i++;
+			//Check if there's branch
+			if(u_turn){
+				if(i == 3){
+					branch_avail = false;
 				}
 				else{
+					branch_avail = true;
+				}
+			}
+			// Still a new attempt
+			else{
+				branch_avail = true;
+			}
+
+			if(branch_avail){
+				// Go to the next branch
+				turnL(90);
+
+				// Check whether a red block has been encountered
+				// If so, add the last value to switch to another
+				// branch.
+				if(!u_turn){
+					i = 1;
+				}
+				else{
+					if(i <= 3){
+						i++;
+					}
+					else{
+						i = Pop(&S);
+						i++;
+					}
+					u_turn = false;
+				}
+
+				Push(&S,i);
+				// After turning, check for branch availability
+				while(getColorAmbient(colorSensor) >= 90 && i <= 3){
+					// Change movement, on unavailable branch
 					i = Pop(&S);
 					i++;
+					Push(&S, i);
+					turnR(90);
 				}
-				u_turn = false;
+				if(i == 4){
+					branch_avail = false;
+					i--;
+				}
 			}
 
-			Push(&S,i);
-
-			// After turning, check for branch availability
-			while(getColorAmbient(colorSensor) >= 90 && i <= 3){
-				// Change movement, on unavailable branch
-				i = Pop(&S);
-				i++;
-				Push(&S, i);
-				turnR(90);
+			// No path available, backtrack
+			else{
+				//If there's still path to backtrack
+				if(!IsEmpty(S)){
+					i = Pop(&S);
+					// Turn around
+					turnL(90);
+					u_turn = true;
+				}
 			}
-			// EXCEPTION : Found Green Zone again
-			clearTimer(T1);
-			found_green = true;
 		}
 
 		// Found Red
@@ -169,6 +202,11 @@ task main()
 			stopAllMotors();
 			wait(2);
 			finish = true;
+		}
+		else{
+			setMotor(leftMotor, track_speed);
+			setMotor(rightMotor, track_speed);
+			wait(0.3);
 		}
 		PrintOutput(S);
 	}
@@ -296,9 +334,11 @@ void Push(Stack * S, int i){
 
 int Pop(Stack * S){
 	int i;
+	ClearOutput();
 	i = (*S).data[(*S).top_stack];
 	(*S).data[(*S).top_stack] = 0;
 	(*S).top_stack--;
+	PrintOutput(*S);
 
 	return i;
 }
@@ -311,6 +351,10 @@ void PrintOutput(Stack S){
 			displayTextLine(i, Output);
 		}
 	}
+}
+
+bool IsEmpty(Stack S){
+	return (S.top_stack == -1);
 }
 
 void ClearOutput(){

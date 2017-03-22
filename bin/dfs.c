@@ -24,11 +24,11 @@
 // Constants //
 ///////////////
 // Macro Define
-#define max_stack 100
+#define max_stack 200
 
 // Constants
-const int track_speed = 90;
-const int encode_range = 100;
+const int track_speed = 50;
+const int encode_range = 200;
 
 // Stack
 typedef struct{
